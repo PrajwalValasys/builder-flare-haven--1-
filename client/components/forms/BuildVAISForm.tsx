@@ -520,6 +520,41 @@ export default function BuildVAISForm() {
     setSelectedTopics(selectedTopics.filter((t) => t !== topic));
   };
 
+  const handleSubcategorySelection = async (subcategoryId: number) => {
+    if (!subcategoryId) return;
+
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const response = await axios.get(
+        withSlash(`${GET_PRODUCTS_CATEGORY}/${subcategoryId}`),
+        { headers }
+      );
+
+      const data = response?.data;
+      if (data?.product_category_list) {
+        const categories = data.product_category_list.map((item: any) => ({
+          value: item.product_category_name,
+          label: item.product_category_name,
+        }));
+        setProductCategories(categories);
+
+        // Auto-select first category if available (like old implementation)
+        if (categories.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            productCategory: categories[0].value
+          }));
+        }
+      } else {
+        console.warn("No product_category_list in response", data);
+        setProductCategories([]);
+      }
+    } catch (error) {
+      console.error("Failed to load product categories", error);
+      setProductCategories([]);
+    }
+  };
+
   const handleGenerateTopics = async () => {
     const rawInput = generateTopicsInput.trim();
     if (!rawInput) {
