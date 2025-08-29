@@ -55,7 +55,14 @@ import axios from "axios";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/types";
 import { toast } from "react-toastify";
-import { GET_PRODUCTS_CATEGORY, GET_PRODUCTS_SUB_CATEGORY, GET_ALL_COUNTRY, GET_ALL_TOPICS, GET_TOPICS_WITH_URL, GtwoURL } from "@/api/api";
+import {
+  GET_PRODUCTS_CATEGORY,
+  GET_PRODUCTS_SUB_CATEGORY,
+  GET_ALL_COUNTRY,
+  GET_ALL_TOPICS,
+  GET_TOPICS_WITH_URL,
+  GtwoURL,
+} from "@/api/api";
 
 interface FormData {
   productSubcategory: string;
@@ -373,7 +380,9 @@ export default function BuildVAISForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic data states (shadow top-level placeholders)
-  const [productSubcategories, setProductSubcategories] = useState<string[]>([]);
+  const [productSubcategories, setProductSubcategories] = useState<string[]>(
+    [],
+  );
   const [productCategories, setProductCategories] = useState<string[]>([]);
   const [geolocations, setGeolocations] = useState<string[]>([]);
   const [allTopics, setAllTopics] = useState<any[]>([]);
@@ -400,7 +409,8 @@ export default function BuildVAISForm() {
         axios.get(topicsUrl, { headers }),
       ];
 
-      const [catRes, subRes, geoRes, topicsRes] = await Promise.allSettled(requests);
+      const [catRes, subRes, geoRes, topicsRes] =
+        await Promise.allSettled(requests);
 
       try {
         let catsRaw =
@@ -409,7 +419,9 @@ export default function BuildVAISForm() {
             : [];
         // Fallback for categories endpoint with underscores if hyphen route fails
         if (catsRaw.length === 0 && catRes.status === "rejected") {
-          const altCatUrl = withSlash(catUrl.replace("get-products-category", "get_products_category"));
+          const altCatUrl = withSlash(
+            catUrl.replace("get-products-category", "get_products_category"),
+          );
           try {
             const alt = await axios.get(altCatUrl, { headers });
             catsRaw = alt?.data?.data ?? alt?.data ?? [];
@@ -423,16 +435,25 @@ export default function BuildVAISForm() {
         if (subRes.status === "fulfilled") {
           const subsData = subRes.value?.data;
           if (subsData?.product_sub_category_list) {
-            subsProcessed = subsData.product_sub_category_list.map((item: any) => ({
-              value: item.id,
-              label: item.product_sub_category_name,
-            }));
-            subsProcessed.sort((a: any, b: any) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+            subsProcessed = subsData.product_sub_category_list.map(
+              (item: any) => ({
+                value: item.id,
+                label: item.product_sub_category_name,
+              }),
+            );
+            subsProcessed.sort((a: any, b: any) =>
+              a.label.localeCompare(b.label, undefined, {
+                sensitivity: "base",
+              }),
+            );
           } else if (Array.isArray(subsData)) {
-            subsProcessed = subsData.map((item: any) => ({
-              value: item.id || item.value,
-              label: item.product_sub_category_name || item.name || item.label,
-            })).filter(item => item.label);
+            subsProcessed = subsData
+              .map((item: any) => ({
+                value: item.id || item.value,
+                label:
+                  item.product_sub_category_name || item.name || item.label,
+              }))
+              .filter((item) => item.label);
           }
         }
 
@@ -441,13 +462,17 @@ export default function BuildVAISForm() {
         if (geoRes.status === "fulfilled") {
           const geoData = geoRes.value?.data;
           if (Array.isArray(geoData)) {
-            const countries = geoData.map((item: any) => {
-              const countryName = item.country || item.name || item;
-              return {
-                value: countryName,
-                label: countryName.replace(/\b\w/g, (l: string) => l.toUpperCase()),
-              };
-            }).filter(item => item.value && item.value !== "selectAll");
+            const countries = geoData
+              .map((item: any) => {
+                const countryName = item.country || item.name || item;
+                return {
+                  value: countryName,
+                  label: countryName.replace(/\b\w/g, (l: string) =>
+                    l.toUpperCase(),
+                  ),
+                };
+              })
+              .filter((item) => item.value && item.value !== "selectAll");
             geosProcessed = [...geosProcessed, ...countries];
           }
         }
@@ -457,22 +482,28 @@ export default function BuildVAISForm() {
         if (topicsRes.status === "fulfilled") {
           const topicsData = topicsRes.value?.data;
           if (Array.isArray(topicsData)) {
-            topicsProcessed = topicsData.map((t: any, index: number) => ({
-              id: t.id || t.name || index,
-              name: t.name || t.topic || t,
-              category: t.category || t.topic_category || "",
-              theme: t.theme || t.topic_theme || "",
-              description: t.description || "",
-              conversion: t.conversion || "",
-              volume: t.volume || "",
-            })).filter(topic => topic.name);
+            topicsProcessed = topicsData
+              .map((t: any, index: number) => ({
+                id: t.id || t.name || index,
+                name: t.name || t.topic || t,
+                category: t.category || t.topic_category || "",
+                theme: t.theme || t.topic_theme || "",
+                description: t.description || "",
+                conversion: t.conversion || "",
+                volume: t.volume || "",
+              }))
+              .filter((topic) => topic.name);
           }
         }
 
-        if (catRes.status === "rejected") console.warn("Categories request failed", catRes.reason);
-        if (subRes.status === "rejected") console.warn("Subcategories request failed", subRes.reason);
-        if (geoRes.status === "rejected") console.warn("Countries request failed", geoRes.reason);
-        if (topicsRes.status === "rejected") console.warn("Topics request failed", topicsRes.reason);
+        if (catRes.status === "rejected")
+          console.warn("Categories request failed", catRes.reason);
+        if (subRes.status === "rejected")
+          console.warn("Subcategories request failed", subRes.reason);
+        if (geoRes.status === "rejected")
+          console.warn("Countries request failed", geoRes.reason);
+        if (topicsRes.status === "rejected")
+          console.warn("Topics request failed", topicsRes.reason);
 
         // Set the processed data
         setProductCategories([]); // Categories loaded separately when subcategory selected
@@ -481,10 +512,18 @@ export default function BuildVAISForm() {
         setAllTopics(topicsProcessed);
 
         // Create filter options for topics
-        const topicCats = Array.from(new Set(topicsProcessed.map((t: any) => t.category).filter(Boolean)));
-        const topicThemes = Array.from(new Set(topicsProcessed.map((t: any) => t.theme).filter(Boolean)));
-        setFilterTopicOptions(topicCats.map(cat => ({ label: cat, value: cat })));
-        setFilterThemeOptions(topicThemes.map(theme => ({ label: theme, value: theme })));
+        const topicCats = Array.from(
+          new Set(topicsProcessed.map((t: any) => t.category).filter(Boolean)),
+        );
+        const topicThemes = Array.from(
+          new Set(topicsProcessed.map((t: any) => t.theme).filter(Boolean)),
+        );
+        setFilterTopicOptions(
+          topicCats.map((cat) => ({ label: cat, value: cat })),
+        );
+        setFilterThemeOptions(
+          topicThemes.map((theme) => ({ label: theme, value: theme })),
+        );
       } catch (err) {
         console.error("Failed to process VAIS dropdown data", err);
       }
@@ -494,9 +533,17 @@ export default function BuildVAISForm() {
   }, [token]);
 
   const filteredTopics = allTopics.filter((topic: any) => {
-    const matchSearch = topic?.name?.toLowerCase()?.includes(searchTerm.toLowerCase());
-    const matchCategory = !filterTopic || filterTopic === "all-topics" || (topic?.category || "") === filterTopic;
-    const matchTheme = !filterTheme || filterTheme === "all-themes" || (topic?.theme || "") === filterTheme;
+    const matchSearch = topic?.name
+      ?.toLowerCase()
+      ?.includes(searchTerm.toLowerCase());
+    const matchCategory =
+      !filterTopic ||
+      filterTopic === "all-topics" ||
+      (topic?.category || "") === filterTopic;
+    const matchTheme =
+      !filterTheme ||
+      filterTheme === "all-themes" ||
+      (topic?.theme || "") === filterTheme;
     const notSelected = !selectedTopics.includes(topic?.name);
     return matchSearch && matchCategory && matchTheme && notSelected;
   });
@@ -527,7 +574,7 @@ export default function BuildVAISForm() {
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
       const response = await axios.get(
         withSlash(`${GET_PRODUCTS_CATEGORY}/${subcategoryId}`),
-        { headers }
+        { headers },
       );
 
       const data = response?.data;
@@ -540,9 +587,9 @@ export default function BuildVAISForm() {
 
         // Auto-select first category if available (like old implementation)
         if (categories.length > 0) {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            productCategory: categories[0].value
+            productCategory: categories[0].value,
           }));
         }
       } else {
@@ -582,7 +629,7 @@ export default function BuildVAISForm() {
       try {
         response = await axios.get(
           `${withSlash(GET_TOPICS_WITH_URL)}?url=${encodeURIComponent(url)}`,
-          { headers }
+          { headers },
         );
       } catch (err) {
         // Try POST with different payload keys
@@ -590,13 +637,13 @@ export default function BuildVAISForm() {
           response = await axios.post(
             withSlash(GET_TOPICS_WITH_URL),
             { url },
-            { headers }
+            { headers },
           );
         } catch (_err) {
           response = await axios.post(
             withSlash(GET_TOPICS_WITH_URL),
             { website_url: url },
-            { headers }
+            { headers },
           );
         }
       }
@@ -616,7 +663,10 @@ export default function BuildVAISForm() {
         : [];
 
       if (names.length) {
-        const merged = Array.from(new Set([...selectedTopics, ...names])).slice(0, 12);
+        const merged = Array.from(new Set([...selectedTopics, ...names])).slice(
+          0,
+          12,
+        );
         setSelectedTopics(merged);
         toast.success(`${names.length} topics added.`);
       } else {
@@ -624,7 +674,10 @@ export default function BuildVAISForm() {
       }
     } catch (e: any) {
       console.error("Failed to generate topics from URL", e);
-      const msg = e?.response?.data?.message || e?.message || "Server error while generating topics.";
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        "Server error while generating topics.";
       toast.error(msg);
     } finally {
       setGeneratingTopics(false);
@@ -723,7 +776,9 @@ export default function BuildVAISForm() {
       <div className="flex justify-between items-center">
         <span className="font-medium">{topic?.name}</span>
         {topic?.conversion && (
-          <Badge variant="outline" className="text-xs">{topic.conversion} convert</Badge>
+          <Badge variant="outline" className="text-xs">
+            {topic.conversion} convert
+          </Badge>
         )}
       </div>
       {topic?.description && (
@@ -915,7 +970,9 @@ export default function BuildVAISForm() {
                             productSubcategory: value,
                           });
                           // Load categories when subcategory is selected
-                          const subcategoryObj = productSubcategories.find(item => item.value.toString() === value);
+                          const subcategoryObj = productSubcategories.find(
+                            (item) => item.value.toString() === value,
+                          );
                           if (subcategoryObj) {
                             handleSubcategorySelection(subcategoryObj.value);
                           }
@@ -932,7 +989,10 @@ export default function BuildVAISForm() {
                         </SelectTrigger>
                         <SelectContent>
                           {productSubcategories.map((item: any) => (
-                            <SelectItem key={item.value} value={item.value.toString()}>
+                            <SelectItem
+                              key={item.value}
+                              value={item.value.toString()}
+                            >
                               {item.label}
                             </SelectItem>
                           ))}
@@ -974,7 +1034,9 @@ export default function BuildVAISForm() {
                         onValueChange={(value) => {
                           if (value === "selectAll") {
                             // Select all geolocations except "Select All"
-                            const allValues = geolocations.filter(item => item.value !== "selectAll").map(item => item.value);
+                            const allValues = geolocations
+                              .filter((item) => item.value !== "selectAll")
+                              .map((item) => item.value);
                             setFormData({
                               ...formData,
                               geolocation: allValues,
@@ -1023,7 +1085,8 @@ export default function BuildVAISForm() {
                           {/* Filtered Options */}
                           <div className="max-h-48 overflow-y-auto">
                             {/* Select All Option */}
-                            {formData.geolocation.length < geolocations.length - 1 && (
+                            {formData.geolocation.length <
+                              geolocations.length - 1 && (
                               <SelectItem
                                 value="selectAll"
                                 className="font-semibold text-valasys-orange"
@@ -1066,8 +1129,12 @@ export default function BuildVAISForm() {
                         <div className="space-y-2">
                           <div className="flex flex-wrap gap-2">
                             {formData.geolocation.map((locationValue) => {
-                              const locationObj = geolocations.find(geo => geo.value === locationValue);
-                              const displayName = locationObj ? locationObj.label : locationValue;
+                              const locationObj = geolocations.find(
+                                (geo) => geo.value === locationValue,
+                              );
+                              const displayName = locationObj
+                                ? locationObj.label
+                                : locationValue;
                               return (
                                 <div
                                   key={locationValue}
@@ -1079,9 +1146,10 @@ export default function BuildVAISForm() {
                                     onClick={() => {
                                       setFormData({
                                         ...formData,
-                                        geolocation: formData.geolocation.filter(
-                                          (l) => l !== locationValue,
-                                        ),
+                                        geolocation:
+                                          formData.geolocation.filter(
+                                            (l) => l !== locationValue,
+                                          ),
                                       });
                                     }}
                                     className="ml-1 hover:bg-blue-300 rounded-full p-0.5 transition-colors"
@@ -1307,7 +1375,9 @@ export default function BuildVAISForm() {
                                   {topic.conversion}
                                 </Badge>
                               )}
-                              {(topic.description || topic.volume || topic.conversion) && (
+                              {(topic.description ||
+                                topic.volume ||
+                                topic.conversion) && (
                                 <Dialog>
                                   <DialogTrigger asChild>
                                     <Button

@@ -55,9 +55,30 @@ const App = () => (
                   <Route path="/login" element={<Login />} />
 
                   {/* Protected Routes */}
-                  <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                  <Route path="/build-vais" element={<ProtectedRoute><BuildVAIS /></ProtectedRoute>} />
-                  <Route path="/vais-results" element={<ProtectedRoute><VAISResults /></ProtectedRoute>} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Index />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/build-vais"
+                    element={
+                      <ProtectedRoute>
+                        <BuildVAIS />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/vais-results"
+                    element={
+                      <ProtectedRoute>
+                        <VAISResults />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   {/* Catch-all route */}
                   <Route path="*" element={<NotFound />} />
