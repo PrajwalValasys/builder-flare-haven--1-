@@ -17,6 +17,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Loading from "./components/Loading";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import BuildVAIS from "./pages/BuildVAIS";
+import VAISResults from "./pages/VAISResults";
 
 // Create a simple NotFound component
 const NotFound = () => (
@@ -53,7 +55,30 @@ const App = () => (
                   <Route path="/login" element={<Login />} />
 
                   {/* Protected Routes */}
-                  <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Index />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/build-vais"
+                    element={
+                      <ProtectedRoute>
+                        <BuildVAIS />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/vais-results"
+                    element={
+                      <ProtectedRoute>
+                        <VAISResults />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   {/* Catch-all route */}
                   <Route path="*" element={<NotFound />} />

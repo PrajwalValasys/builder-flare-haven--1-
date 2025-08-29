@@ -1,6 +1,6 @@
 import { hostBackURl } from "../config/http";
 
-const BASE_URL = hostBackURl;
+const BASE_URL = (hostBackURl || "").replace(/\/+$/, "");
 
 export const LOGIN_URL = `${BASE_URL}/login/`;
 export const REGISTER_URL = `${BASE_URL}/register`;
