@@ -1,24 +1,24 @@
 export const URL = {
   "development": {
-    "http": import.meta.env.VITE_LOCAL_BACKEND_URL
+    "http": import.meta.env.VITE_LOCAL_BACKEND_URL || "https://kq0nd3bt-8000.inc1.devtunnels.ms/"
   },
   "staging": {
-    "http": import.meta.env.VITE_STAGING_BACKEND_URL
+    "http": import.meta.env.VITE_STAGING_BACKEND_URL || "https://uatapi.valasys.ai"
   },
   "prod": {
-    "http": import.meta.env.VITE_PROD_BACKEND_URL
+    "http": import.meta.env.VITE_PROD_BACKEND_URL || "https://api.valasys.ai"
   }
 }
 
 export const HOSTURL = {
   "development": {
-    "http": import.meta.env.VITE_LOCAL_URL
+    "http": import.meta.env.VITE_LOCAL_URL || "http://localhost:3000"
   },
   "staging": {
-    "http": import.meta.env.VITE_STAGING_URL
+    "http": import.meta.env.VITE_STAGING_URL || "https://uat.valasys.ai"
   },
   "prod": {
-    "http": import.meta.env.VITE_PROD_URL
+    "http": import.meta.env.VITE_PROD_URL || "https://valasys.ai"
   }
 }
 

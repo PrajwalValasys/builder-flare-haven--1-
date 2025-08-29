@@ -12,7 +12,16 @@ export const GEOLOCATION_SUCCESS = "GEOLOCATION_SUCCESS";
 export const INTENT_RANGE_SUCCESS = "INTENT_RANGE_SUCCESS";
 
 // Site key
-export const SITE_KEY = import.meta.env.VITE_SITE_KEY || '6Ld7dygpAAAAACiHzxJ9F5TTdAJl25uxmqHK0IjZ';
+export const SITE_KEY = import.meta.env.VITE_SITE_KEY || '6Lf5-i8pAAAAABIwcvLDzdcOseKBx5BHw9xkVQkE';
+
+// Environment-specific site keys
+export const SITE_KEY_STAGING = import.meta.env.VITE_SITE_KEY_STAGING || '6LcE6TQpAAAAAI9Y8xMFV6iH5GRgPIuQfvc880-Z';
+
+// Stripe publishable key
+export const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_PUBLISHABLE_KEY || 'pk_test_51Obi6pJm6qDYebwG3Z1YawE2taAcebbU0Qk1kgINFBgGms9hwpucZJPhFEGl0P19Isg3IOcVAU9v6Kn3j26S3ObF00uEijWI5n';
+
+// LinkedIn client ID
+export const LINKEDIN_CLIENT_ID = import.meta.env.VITE_CLIENT_ID || '777h49a4sh8pnq';
 
 export const industryWeightage = [
   { value: "H", label: "High" },
