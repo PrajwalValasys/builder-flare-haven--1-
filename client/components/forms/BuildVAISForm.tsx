@@ -418,53 +418,73 @@ export default function BuildVAISForm() {
           }
         }
 
-        const subsRaw =
-          subRes.status === "fulfilled"
-            ? (subRes.value?.data?.data ?? subRes.value?.data ?? [])
-            : [];
-        const geoRaw =
-          geoRes.status === "fulfilled"
-            ? (geoRes.value?.data?.data ?? geoRes.value?.data ?? [])
-            : [];
-        const topicsRaw =
-          topicsRes.status === "fulfilled"
-            ? (topicsRes.value?.data?.data ?? topicsRes.value?.data ?? [])
-            : [];
+        // Process subcategories - match old format: product_sub_category_list with id and product_sub_category_name
+        let subsProcessed = [];
+        if (subRes.status === "fulfilled") {
+          const subsData = subRes.value?.data;
+          if (subsData?.product_sub_category_list) {
+            subsProcessed = subsData.product_sub_category_list.map((item: any) => ({
+              value: item.id,
+              label: item.product_sub_category_name,
+            }));
+            subsProcessed.sort((a: any, b: any) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+          } else if (Array.isArray(subsData)) {
+            subsProcessed = subsData.map((item: any) => ({
+              value: item.id || item.value,
+              label: item.product_sub_category_name || item.name || item.label,
+            })).filter(item => item.label);
+          }
+        }
+
+        // Process countries - match old format with "Select All" option
+        let geosProcessed = [{ value: "selectAll", label: "Select All" }];
+        if (geoRes.status === "fulfilled") {
+          const geoData = geoRes.value?.data;
+          if (Array.isArray(geoData)) {
+            const countries = geoData.map((item: any) => {
+              const countryName = item.country || item.name || item;
+              return {
+                value: countryName,
+                label: countryName.replace(/\b\w/g, (l: string) => l.toUpperCase()),
+              };
+            }).filter(item => item.value && item.value !== "selectAll");
+            geosProcessed = [...geosProcessed, ...countries];
+          }
+        }
+
+        // Process topics - ensure proper structure with id field
+        let topicsProcessed = [];
+        if (topicsRes.status === "fulfilled") {
+          const topicsData = topicsRes.value?.data;
+          if (Array.isArray(topicsData)) {
+            topicsProcessed = topicsData.map((t: any, index: number) => ({
+              id: t.id || t.name || index,
+              name: t.name || t.topic || t,
+              category: t.category || t.topic_category || "",
+              theme: t.theme || t.topic_theme || "",
+              description: t.description || "",
+              conversion: t.conversion || "",
+              volume: t.volume || "",
+            })).filter(topic => topic.name);
+          }
+        }
 
         if (catRes.status === "rejected") console.warn("Categories request failed", catRes.reason);
         if (subRes.status === "rejected") console.warn("Subcategories request failed", subRes.reason);
         if (geoRes.status === "rejected") console.warn("Countries request failed", geoRes.reason);
         if (topicsRes.status === "rejected") console.warn("Topics request failed", topicsRes.reason);
 
-        const cats = Array.isArray(catsRaw)
-          ? catsRaw.map((it: any) => it?.name || it?.category || it?.title || it).filter(Boolean)
-          : [];
-        const subs = Array.isArray(subsRaw)
-          ? subsRaw.map((it: any) => it?.name || it?.subcategory || it).filter(Boolean)
-          : [];
-        const geos = Array.isArray(geoRaw)
-          ? geoRaw.map((it: any) => it?.name || it?.country || it).filter(Boolean)
-          : [];
-        const topics = Array.isArray(topicsRaw)
-          ? topicsRaw.map((t: any) => ({
-              name: t?.name || t?.topic || t,
-              category: t?.category || t?.topic_category || "",
-              theme: t?.theme || t?.topic_theme || "",
-              description: t?.description || "",
-              conversion: t?.conversion || "",
-              volume: t?.volume || "",
-            }))
-          : [];
+        // Set the processed data
+        setProductCategories([]); // Categories loaded separately when subcategory selected
+        setProductSubcategories(subsProcessed);
+        setGeolocations(geosProcessed);
+        setAllTopics(topicsProcessed);
 
-        setProductCategories(cats);
-        setProductSubcategories(subs);
-        setGeolocations(geos);
-        setAllTopics(topics);
-
-        const topicCats = Array.from(new Set(topics.map((t: any) => t.category).filter(Boolean)));
-        const topicThemes = Array.from(new Set(topics.map((t: any) => t.theme).filter(Boolean)));
-        setFilterTopicOptions(topicCats as string[]);
-        setFilterThemeOptions(topicThemes as string[]);
+        // Create filter options for topics
+        const topicCats = Array.from(new Set(topicsProcessed.map((t: any) => t.category).filter(Boolean)));
+        const topicThemes = Array.from(new Set(topicsProcessed.map((t: any) => t.theme).filter(Boolean)));
+        setFilterTopicOptions(topicCats.map(cat => ({ label: cat, value: cat })));
+        setFilterThemeOptions(topicThemes.map(theme => ({ label: theme, value: theme })));
       } catch (err) {
         console.error("Failed to process VAIS dropdown data", err);
       }
