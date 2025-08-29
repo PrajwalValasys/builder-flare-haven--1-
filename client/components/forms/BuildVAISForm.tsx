@@ -909,12 +909,17 @@ export default function BuildVAISForm() {
                       </Label>
                       <Select
                         value={formData.productSubcategory}
-                        onValueChange={(value) =>
+                        onValueChange={(value) => {
                           setFormData({
                             ...formData,
                             productSubcategory: value,
-                          })
-                        }
+                          });
+                          // Load categories when subcategory is selected
+                          const subcategoryObj = productSubcategories.find(item => item.value.toString() === value);
+                          if (subcategoryObj) {
+                            handleSubcategorySelection(subcategoryObj.value);
+                          }
+                        }}
                       >
                         <SelectTrigger
                           className={cn(
@@ -926,9 +931,9 @@ export default function BuildVAISForm() {
                           <SelectValue placeholder="Select subcategory" />
                         </SelectTrigger>
                         <SelectContent>
-                          {productSubcategories.map((item) => (
-                            <SelectItem key={item} value={item}>
-                              {item}
+                          {productSubcategories.map((item: any) => (
+                            <SelectItem key={item.value} value={item.value.toString()}>
+                              {item.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -947,9 +952,9 @@ export default function BuildVAISForm() {
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
-                          {productCategories.map((item) => (
-                            <SelectItem key={item} value={item}>
-                              {item}
+                          {productCategories.map((item: any) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
