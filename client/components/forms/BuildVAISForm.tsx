@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FloatingStatsWidget } from "@/components/ui/floating-stats-widget";
+import axios from "axios";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/types";
+import { GET_PRODUCTS_CATEGORY, GET_PRODUCTS_SUB_CATEGORY, GET_ALL_COUNTRY, GET_ALL_TOPICS, GET_TOPICS_WITH_URL } from "@/api/api";
 
 interface FormData {
   productSubcategory: string;
@@ -366,11 +370,75 @@ export default function BuildVAISForm() {
   const [newSearchName, setNewSearchName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredTopics = intentTopics.filter(
-    (topic) =>
-      topic.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !selectedTopics.includes(topic.name),
-  );
+  // Dynamic data states (shadow top-level placeholders)
+  const [productSubcategories, setProductSubcategories] = useState<string[]>([]);
+  const [productCategories, setProductCategories] = useState<string[]>([]);
+  const [geolocations, setGeolocations] = useState<string[]>([]);
+  const [allTopics, setAllTopics] = useState<any[]>([]);
+  const [filterTopicOptions, setFilterTopicOptions] = useState<string[]>([]);
+  const [filterThemeOptions, setFilterThemeOptions] = useState<string[]>([]);
+
+  const token = useSelector((state: RootState) => state.user.userInfo?.token);
+
+  useEffect(() => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    const fetchAll = async () => {
+      try {
+        const [catRes, subRes, geoRes, topicsRes] = await Promise.all([
+          axios.get(GET_PRODUCTS_CATEGORY, { headers }),
+          axios.get(GET_PRODUCTS_SUB_CATEGORY, { headers }),
+          axios.get(GET_ALL_COUNTRY, { headers }),
+          axios.get(GET_ALL_TOPICS, { headers }),
+        ]);
+
+        const catsRaw = catRes?.data?.data ?? catRes?.data ?? [];
+        const subsRaw = subRes?.data?.data ?? subRes?.data ?? [];
+        const geoRaw = geoRes?.data?.data ?? geoRes?.data ?? [];
+        const topicsRaw = topicsRes?.data?.data ?? topicsRes?.data ?? [];
+
+        const cats = Array.isArray(catsRaw)
+          ? catsRaw.map((it: any) => it?.name || it?.category || it?.title || it).filter(Boolean)
+          : [];
+        const subs = Array.isArray(subsRaw)
+          ? subsRaw.map((it: any) => it?.name || it?.subcategory || it).filter(Boolean)
+          : [];
+        const geos = Array.isArray(geoRaw)
+          ? geoRaw.map((it: any) => it?.name || it?.country || it).filter(Boolean)
+          : [];
+        const topics = Array.isArray(topicsRaw)
+          ? topicsRaw.map((t: any) => ({
+              name: t?.name || t?.topic || t,
+              category: t?.category || t?.topic_category || "",
+              theme: t?.theme || t?.topic_theme || "",
+              description: t?.description || "",
+              conversion: t?.conversion || "",
+              volume: t?.volume || "",
+            }))
+          : [];
+
+        setProductCategories(cats);
+        setProductSubcategories(subs);
+        setGeolocations(geos);
+        setAllTopics(topics);
+
+        const topicCats = Array.from(new Set(topics.map((t: any) => t.category).filter(Boolean)));
+        const topicThemes = Array.from(new Set(topics.map((t: any) => t.theme).filter(Boolean)));
+        setFilterTopicOptions(topicCats as string[]);
+        setFilterThemeOptions(topicThemes as string[]);
+      } catch (err) {
+        console.error("Failed to load VAIS dropdown data", err);
+      }
+    };
+    fetchAll();
+  }, [token]);
+
+  const filteredTopics = allTopics.filter((topic: any) => {
+    const matchSearch = topic?.name?.toLowerCase()?.includes(searchTerm.toLowerCase());
+    const matchCategory = !filterTopic || filterTopic === "all-topics" || (topic?.category || "") === filterTopic;
+    const matchTheme = !filterTheme || filterTheme === "all-themes" || (topic?.theme || "") === filterTheme;
+    const notSelected = !selectedTopics.includes(topic?.name);
+    return matchSearch && matchCategory && matchTheme && notSelected;
+  });
 
   const handleTopicSelect = (topicName: string) => {
     if (!selectedTopics.includes(topicName)) {
@@ -389,6 +457,36 @@ export default function BuildVAISForm() {
 
   const handleTopicRemove = (topic: string) => {
     setSelectedTopics(selectedTopics.filter((t) => t !== topic));
+  };
+
+  const handleGenerateTopics = async () => {
+    if (!generateTopicsInput.trim()) return;
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      let response;
+      try {
+        response = await axios.post(
+          GET_TOPICS_WITH_URL,
+          { url: generateTopicsInput.trim() },
+          { headers }
+        );
+      } catch {
+        response = await axios.get(
+          `${GET_TOPICS_WITH_URL}?url=${encodeURIComponent(generateTopicsInput.trim())}`,
+          { headers }
+        );
+      }
+      const raw = response?.data?.data ?? response?.data ?? [];
+      const names: string[] = Array.isArray(raw)
+        ? raw.map((t: any) => t?.name || t?.topic || t).filter(Boolean)
+        : [];
+      if (names.length) {
+        const merged = Array.from(new Set([...selectedTopics, ...names])).slice(0, 12);
+        setSelectedTopics(merged);
+      }
+    } catch (e) {
+      console.error("Failed to generate topics from URL", e);
+    }
   };
 
   const handleFileUpload = (file: File) => {
@@ -478,25 +576,33 @@ export default function BuildVAISForm() {
     navigate("/vais-results");
   };
 
-  const getTopicInsight = (topic: (typeof intentTopics)[0]) => (
+  const getTopicInsight = (topic: any) => (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <span className="font-medium">{topic.name}</span>
-        <Badge variant="outline" className="text-xs">
-          {topic.conversion} convert
-        </Badge>
+        <span className="font-medium">{topic?.name}</span>
+        {topic?.conversion && (
+          <Badge variant="outline" className="text-xs">{topic.conversion} convert</Badge>
+        )}
       </div>
-      <p className="text-sm text-gray-600">{topic.description}</p>
-      <div className="flex items-center justify-between text-xs">
-        <span className="flex items-center">
-          <TrendingUp className="w-3 h-3 mr-1" />
-          Volume: {topic.volume}
-        </span>
-        <span className="flex items-center">
-          <Target className="w-3 h-3 mr-1" />
-          Conversion: {topic.conversion}
-        </span>
-      </div>
+      {topic?.description && (
+        <p className="text-sm text-gray-600">{topic.description}</p>
+      )}
+      {(topic?.volume || topic?.conversion) && (
+        <div className="flex items-center justify-between text-xs">
+          {topic?.volume && (
+            <span className="flex items-center">
+              <TrendingUp className="w-3 h-3 mr-1" />
+              Volume: {topic.volume}
+            </span>
+          )}
+          {topic?.conversion && (
+            <span className="flex items-center">
+              <Target className="w-3 h-3 mr-1" />
+              Conversion: {topic.conversion}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -935,6 +1041,7 @@ export default function BuildVAISForm() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={handleGenerateTopics}
                         className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
                       >
                         <Search className="w-4 h-4 text-gray-400" />
@@ -970,7 +1077,7 @@ export default function BuildVAISForm() {
                           <SelectItem value="all-topics">
                             All Categories
                           </SelectItem>
-                          {filterTopics.map((topic) => (
+                          {filterTopicOptions.map((topic) => (
                             <SelectItem key={topic} value={topic}>
                               {topic}
                             </SelectItem>
@@ -990,7 +1097,7 @@ export default function BuildVAISForm() {
                         </SelectTrigger>
                         <SelectContent className="max-h-48 overflow-y-auto">
                           <SelectItem value="all-themes">All Themes</SelectItem>
-                          {filterThemes.map((theme) => (
+                          {filterThemeOptions.map((theme) => (
                             <SelectItem key={theme} value={theme}>
                               {theme}
                             </SelectItem>
@@ -1029,7 +1136,7 @@ export default function BuildVAISForm() {
 
                     {filteredTopics.length > 0 ? (
                       <div className="space-y-1">
-                        {filteredTopics.map((topic) => (
+                        {filteredTopics.map((topic: any) => (
                           <div
                             key={topic.name}
                             className="flex items-center justify-between p-2 hover:bg-valasys-gray-100 rounded cursor-pointer text-sm transition-all duration-200"
@@ -1041,26 +1148,30 @@ export default function BuildVAISForm() {
                               {topic.name}
                             </span>
                             <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">
-                                {topic.conversion}
-                              </Badge>
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Info className="w-3 h-3" />
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-md">
-                                  <DialogHeader>
-                                    <DialogTitle>Topic Insights</DialogTitle>
-                                  </DialogHeader>
-                                  {getTopicInsight(topic)}
-                                </DialogContent>
-                              </Dialog>
+                              {topic.conversion && (
+                                <Badge variant="outline" className="text-xs">
+                                  {topic.conversion}
+                                </Badge>
+                              )}
+                              {(topic.description || topic.volume || topic.conversion) && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Info className="w-3 h-3" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle>Topic Insights</DialogTitle>
+                                    </DialogHeader>
+                                    {getTopicInsight(topic)}
+                                  </DialogContent>
+                                </Dialog>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
