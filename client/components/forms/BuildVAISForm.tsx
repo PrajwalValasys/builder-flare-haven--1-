@@ -972,11 +972,12 @@ export default function BuildVAISForm() {
                     <div className="space-y-3">
                       <Select
                         onValueChange={(value) => {
-                          if (value === "select-all") {
-                            // Select all geolocations
+                          if (value === "selectAll") {
+                            // Select all geolocations except "Select All"
+                            const allValues = geolocations.filter(item => item.value !== "selectAll").map(item => item.value);
                             setFormData({
                               ...formData,
-                              geolocation: [...geolocations],
+                              geolocation: allValues,
                             });
                           } else if (!formData.geolocation.includes(value)) {
                             setFormData({
@@ -1022,10 +1023,9 @@ export default function BuildVAISForm() {
                           {/* Filtered Options */}
                           <div className="max-h-48 overflow-y-auto">
                             {/* Select All Option */}
-                            {formData.geolocation.length <
-                              geolocations.length && (
+                            {formData.geolocation.length < geolocations.length - 1 && (
                               <SelectItem
-                                value="select-all"
+                                value="selectAll"
                                 className="font-semibold text-valasys-orange"
                               >
                                 Select All
@@ -1033,21 +1033,23 @@ export default function BuildVAISForm() {
                             )}
                             {geolocations
                               .filter(
-                                (item) =>
-                                  !formData.geolocation.includes(item) &&
-                                  item
+                                (item: any) =>
+                                  item.value !== "selectAll" &&
+                                  !formData.geolocation.includes(item.value) &&
+                                  item.label
                                     .toLowerCase()
                                     .includes(geoSearchTerm.toLowerCase()),
                               )
-                              .map((item) => (
-                                <SelectItem key={item} value={item}>
-                                  {item}
+                              .map((item: any) => (
+                                <SelectItem key={item.value} value={item.value}>
+                                  {item.label}
                                 </SelectItem>
                               ))}
                             {geolocations.filter(
-                              (item) =>
-                                !formData.geolocation.includes(item) &&
-                                item
+                              (item: any) =>
+                                item.value !== "selectAll" &&
+                                !formData.geolocation.includes(item.value) &&
+                                item.label
                                   .toLowerCase()
                                   .includes(geoSearchTerm.toLowerCase()),
                             ).length === 0 && (
@@ -1063,28 +1065,32 @@ export default function BuildVAISForm() {
                       {formData.geolocation.length > 0 && (
                         <div className="space-y-2">
                           <div className="flex flex-wrap gap-2">
-                            {formData.geolocation.map((location) => (
-                              <div
-                                key={location}
-                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium border border-blue-200 hover:bg-blue-200 transition-colors"
-                              >
-                                <span>{location}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setFormData({
-                                      ...formData,
-                                      geolocation: formData.geolocation.filter(
-                                        (l) => l !== location,
-                                      ),
-                                    });
-                                  }}
-                                  className="ml-1 hover:bg-blue-300 rounded-full p-0.5 transition-colors"
+                            {formData.geolocation.map((locationValue) => {
+                              const locationObj = geolocations.find(geo => geo.value === locationValue);
+                              const displayName = locationObj ? locationObj.label : locationValue;
+                              return (
+                                <div
+                                  key={locationValue}
+                                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium border border-blue-200 hover:bg-blue-200 transition-colors"
                                 >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
+                                  <span>{displayName}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData({
+                                        ...formData,
+                                        geolocation: formData.geolocation.filter(
+                                          (l) => l !== locationValue,
+                                        ),
+                                      });
+                                    }}
+                                    className="ml-1 hover:bg-blue-300 rounded-full p-0.5 transition-colors"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
