@@ -382,19 +382,41 @@ export default function BuildVAISForm() {
 
   useEffect(() => {
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-    const fetchAll = async () => {
-      try {
-        const [catRes, subRes, geoRes, topicsRes] = await Promise.all([
-          axios.get(GET_PRODUCTS_CATEGORY, { headers }),
-          axios.get(GET_PRODUCTS_SUB_CATEGORY, { headers }),
-          axios.get(GET_ALL_COUNTRY, { headers }),
-          axios.get(GET_ALL_TOPICS, { headers }),
-        ]);
 
-        const catsRaw = catRes?.data?.data ?? catRes?.data ?? [];
-        const subsRaw = subRes?.data?.data ?? subRes?.data ?? [];
-        const geoRaw = geoRes?.data?.data ?? geoRes?.data ?? [];
-        const topicsRaw = topicsRes?.data?.data ?? topicsRes?.data ?? [];
+    const withSlash = (url: string) => (url.endsWith("/") ? url : `${url}/`);
+
+    const fetchAll = async () => {
+      const requests = [
+        axios.get(withSlash(GET_PRODUCTS_CATEGORY), { headers }),
+        axios.get(withSlash(GET_PRODUCTS_SUB_CATEGORY), { headers }),
+        axios.get(withSlash(GET_ALL_COUNTRY), { headers }),
+        axios.get(withSlash(GET_ALL_TOPICS), { headers }),
+      ];
+
+      const [catRes, subRes, geoRes, topicsRes] = await Promise.allSettled(requests);
+
+      try {
+        const catsRaw =
+          catRes.status === "fulfilled"
+            ? (catRes.value?.data?.data ?? catRes.value?.data ?? [])
+            : [];
+        const subsRaw =
+          subRes.status === "fulfilled"
+            ? (subRes.value?.data?.data ?? subRes.value?.data ?? [])
+            : [];
+        const geoRaw =
+          geoRes.status === "fulfilled"
+            ? (geoRes.value?.data?.data ?? geoRes.value?.data ?? [])
+            : [];
+        const topicsRaw =
+          topicsRes.status === "fulfilled"
+            ? (topicsRes.value?.data?.data ?? topicsRes.value?.data ?? [])
+            : [];
+
+        if (catRes.status === "rejected") console.warn("Categories request failed", catRes.reason);
+        if (subRes.status === "rejected") console.warn("Subcategories request failed", subRes.reason);
+        if (geoRes.status === "rejected") console.warn("Countries request failed", geoRes.reason);
+        if (topicsRes.status === "rejected") console.warn("Topics request failed", topicsRes.reason);
 
         const cats = Array.isArray(catsRaw)
           ? catsRaw.map((it: any) => it?.name || it?.category || it?.title || it).filter(Boolean)
@@ -426,9 +448,10 @@ export default function BuildVAISForm() {
         setFilterTopicOptions(topicCats as string[]);
         setFilterThemeOptions(topicThemes as string[]);
       } catch (err) {
-        console.error("Failed to load VAIS dropdown data", err);
+        console.error("Failed to process VAIS dropdown data", err);
       }
     };
+
     fetchAll();
   }, [token]);
 
