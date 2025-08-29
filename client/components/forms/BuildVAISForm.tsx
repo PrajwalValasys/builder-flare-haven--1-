@@ -54,7 +54,8 @@ import { FloatingStatsWidget } from "@/components/ui/floating-stats-widget";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/types";
-import { GET_PRODUCTS_CATEGORY, GET_PRODUCTS_SUB_CATEGORY, GET_ALL_COUNTRY, GET_ALL_TOPICS, GET_TOPICS_WITH_URL } from "@/api/api";
+import { toast } from "react-toastify";
+import { GET_PRODUCTS_CATEGORY, GET_PRODUCTS_SUB_CATEGORY, GET_ALL_COUNTRY, GET_ALL_TOPICS, GET_TOPICS_WITH_URL, GtwoURL } from "@/api/api";
 
 interface FormData {
   productSubcategory: string;
@@ -346,6 +347,7 @@ export default function BuildVAISForm() {
   const [geoSearchTerm, setGeoSearchTerm] = useState("");
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [generateTopicsInput, setGenerateTopicsInput] = useState("");
+  const [generatingTopics, setGeneratingTopics] = useState(false);
   const [filterTopic, setFilterTopic] = useState("");
   const [filterTheme, setFilterTheme] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -499,32 +501,78 @@ export default function BuildVAISForm() {
   };
 
   const handleGenerateTopics = async () => {
-    if (!generateTopicsInput.trim()) return;
-    try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-      let response;
+    const rawInput = generateTopicsInput.trim();
+    if (!rawInput) {
+      toast.info("Enter a website URL to generate topics.");
+      return;
+    }
+
+    const normalizeUrl = (u: string) => {
       try {
-        response = await axios.post(
-          withSlash(GET_TOPICS_WITH_URL),
-          { url: generateTopicsInput.trim() },
-          { headers }
-        );
+        const prefixed = /^https?:\/\//i.test(u) ? u : `https://${u}`;
+        const parsed = new URL(prefixed);
+        return parsed.toString();
       } catch {
+        return u;
+      }
+    };
+
+    const url = normalizeUrl(rawInput);
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    setGeneratingTopics(true);
+
+    try {
+      // Try GET first (common for idempotent fetch)
+      let response: any;
+      try {
         response = await axios.get(
-          `${withSlash(GET_TOPICS_WITH_URL)}?url=${encodeURIComponent(generateTopicsInput.trim())}`,
+          `${withSlash(GET_TOPICS_WITH_URL)}?url=${encodeURIComponent(url)}`,
           { headers }
         );
+      } catch (err) {
+        // Try POST with different payload keys
+        try {
+          response = await axios.post(
+            withSlash(GET_TOPICS_WITH_URL),
+            { url },
+            { headers }
+          );
+        } catch (_err) {
+          response = await axios.post(
+            withSlash(GET_TOPICS_WITH_URL),
+            { website_url: url },
+            { headers }
+          );
+        }
       }
-      const raw = response?.data?.data ?? response?.data ?? [];
+
+      let raw = response?.data?.data ?? response?.data ?? [];
+
+      // If still empty, attempt alternate endpoint as a last resort
+      if ((!Array.isArray(raw) || raw.length === 0) && GtwoURL) {
+        try {
+          const g2 = await axios.post(withSlash(GtwoURL), { url }, { headers });
+          raw = g2?.data?.data ?? g2?.data ?? raw;
+        } catch {}
+      }
+
       const names: string[] = Array.isArray(raw)
         ? raw.map((t: any) => t?.name || t?.topic || t).filter(Boolean)
         : [];
+
       if (names.length) {
         const merged = Array.from(new Set([...selectedTopics, ...names])).slice(0, 12);
         setSelectedTopics(merged);
+        toast.success(`${names.length} topics added.`);
+      } else {
+        toast.warn("No topics returned for the given URL.");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to generate topics from URL", e);
+      const msg = e?.response?.data?.message || e?.message || "Server error while generating topics.";
+      toast.error(msg);
+    } finally {
+      setGeneratingTopics(false);
     }
   };
 
@@ -1081,6 +1129,7 @@ export default function BuildVAISForm() {
                         variant="ghost"
                         size="sm"
                         onClick={handleGenerateTopics}
+                        disabled={generatingTopics}
                         className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100"
                       >
                         <Search className="w-4 h-4 text-gray-400" />
