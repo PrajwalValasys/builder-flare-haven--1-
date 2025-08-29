@@ -386,20 +386,36 @@ export default function BuildVAISForm() {
     const withSlash = (url: string) => (url.endsWith("/") ? url : `${url}/`);
 
     const fetchAll = async () => {
+      const catUrl = withSlash(GET_PRODUCTS_CATEGORY);
+      const subUrl = withSlash(GET_PRODUCTS_SUB_CATEGORY);
+      const geoUrl = withSlash(GET_ALL_COUNTRY);
+      const topicsUrl = withSlash(GET_ALL_TOPICS);
+
       const requests = [
-        axios.get(withSlash(GET_PRODUCTS_CATEGORY), { headers }),
-        axios.get(withSlash(GET_PRODUCTS_SUB_CATEGORY), { headers }),
-        axios.get(withSlash(GET_ALL_COUNTRY), { headers }),
-        axios.get(withSlash(GET_ALL_TOPICS), { headers }),
+        axios.get(catUrl, { headers }),
+        axios.get(subUrl, { headers }),
+        axios.get(geoUrl, { headers }),
+        axios.get(topicsUrl, { headers }),
       ];
 
       const [catRes, subRes, geoRes, topicsRes] = await Promise.allSettled(requests);
 
       try {
-        const catsRaw =
+        let catsRaw =
           catRes.status === "fulfilled"
             ? (catRes.value?.data?.data ?? catRes.value?.data ?? [])
             : [];
+        // Fallback for categories endpoint with underscores if hyphen route fails
+        if (catsRaw.length === 0 && catRes.status === "rejected") {
+          const altCatUrl = withSlash(catUrl.replace("get-products-category", "get_products_category"));
+          try {
+            const alt = await axios.get(altCatUrl, { headers });
+            catsRaw = alt?.data?.data ?? alt?.data ?? [];
+          } catch (e) {
+            console.warn("Alternate categories endpoint also failed", e);
+          }
+        }
+
         const subsRaw =
           subRes.status === "fulfilled"
             ? (subRes.value?.data?.data ?? subRes.value?.data ?? [])
@@ -1373,7 +1389,7 @@ export default function BuildVAISForm() {
                       )}
                     >
                       {fileStatus === "valid"
-                        ? "✓ File uploaded successfully"
+                        ? "��� File uploaded successfully"
                         : "❌ Invalid file format or size too large"}
                     </p>
                   </div>
