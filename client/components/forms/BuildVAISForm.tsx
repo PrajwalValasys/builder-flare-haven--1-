@@ -380,10 +380,10 @@ export default function BuildVAISForm() {
 
   const token = useSelector((state: RootState) => state.user.userInfo?.token);
 
+  const withSlash = (url: string) => (url.endsWith("/") ? url : `${url}/`);
+
   useEffect(() => {
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-
-    const withSlash = (url: string) => (url.endsWith("/") ? url : `${url}/`);
 
     const fetchAll = async () => {
       const catUrl = withSlash(GET_PRODUCTS_CATEGORY);
@@ -505,13 +505,13 @@ export default function BuildVAISForm() {
       let response;
       try {
         response = await axios.post(
-          GET_TOPICS_WITH_URL,
+          withSlash(GET_TOPICS_WITH_URL),
           { url: generateTopicsInput.trim() },
           { headers }
         );
       } catch {
         response = await axios.get(
-          `${GET_TOPICS_WITH_URL}?url=${encodeURIComponent(generateTopicsInput.trim())}`,
+          `${withSlash(GET_TOPICS_WITH_URL)}?url=${encodeURIComponent(generateTopicsInput.trim())}`,
           { headers }
         );
       }
